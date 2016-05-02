@@ -25,27 +25,33 @@ To use:
 
 ############################################################
 
-import json
-import re
-# pip install requests[security] --upgrade
-import logging
+
+import platform
 import sys
+import logging
 import urllib2
 import getpass
+import datetime
+import json
+import re
 # pip install python-dateutil
 import dateutil.parser
-import datetime
+# pip install requests[security] --upgrade
 import requests
 
 ############################################################
 
 CONF_FILE = 'hipchat.conf'
 CACHE_FILE = 'hipchat_cache.json'
+API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 print 'Version: ' + __version__
+
+machine = platform.machine()
+print 'Platform: ' + machine
 
 ############################################################
 
@@ -83,6 +89,21 @@ def dt(ts):
     except Exception as e:
         print (e)
     return d
+
+def nows():
+    return datetime.datetime.now().isoformat()
+
+def get_time_left(date_old):
+    diff_str = None
+    now = datetime.datetime.now()
+    diff = now - date_old
+    diff_seconds = diff.total_seconds()
+    if diff_seconds < API_WAIT_TIME:
+        left = API_WAIT_TIME - diff_seconds
+        m = int(left / 60)
+        s = int(left % 60)
+        diff_str = '%sm %ss' % (m, s)
+    return diff_str
 
 ############################################################
 
@@ -170,12 +191,21 @@ def get_cache():
             try:
                 rooms = c['ROOMS']
             except KeyError:
-                 rooms = None
+                rooms = None
             try:
-                users= c['USERS']
+                users = c['USERS']
             except KeyError:
-              users= None
-            return (rooms, users)
+                users= None
+            try:
+                mock = c['MOCK']
+            except KeyError:
+                mock = None
+            try:
+                lastrun = c['LASTRUN']
+            except KeyError:
+                lastrun = None
+
+            return (rooms, users, mock, lastrun)
     except IOError:
         logger.trace('Ignoring: Could not find %s' % CACHE_FILE)
     except ValueError:
@@ -183,8 +213,8 @@ def get_cache():
 
     return (None, None)
 
-def update_cache(rooms=None, users=None):
-    rms, us = get_cache()
+def update_cache(rooms=None, users=None, mock=None):
+    rms, us, mk, lastrun = get_cache()
     c = {}
 
     if rooms:
@@ -196,6 +226,13 @@ def update_cache(rooms=None, users=None):
         c['USERS'] = users
     elif us:
         c['USERS'] = us
+
+    if mock:
+        c['MOCK'] = mock
+        c['LASTRUN'] = nows()
+    elif us:
+        c['MOCK'] = mk
+        c['LASTRUN'] = lastrun
 
     try:
         with open(CACHE_FILE, 'w') as c_file:
@@ -232,9 +269,11 @@ def get(api_url, access_token, path):
 
 def check_access_token(api_url, access_token):
     logger.info('Checking access token ...')
-    path = 'user?auth_test=true'
-    valid, r = get(api_url, access_token, path)
-    return valid
+    if access_token:
+        path = 'user?auth_test=true'
+        valid, r = get(api_url, access_token, path)
+        return valid
+    return False
 
 def get_new_access_token(api_url, base_url, useremail=None):
     logger.info('Updating access token ...')
@@ -246,6 +285,15 @@ def get_new_access_token(api_url, base_url, useremail=None):
         update_conf_info(access_token, useremail)
     return access_token
 
+def check_time_left():
+    rooms, users, mock, lastrun = get_cache()
+    if lastrun:
+        logger.debug('Last run %s', lastrun)
+        lr = dp(lastrun)
+        timeleft = get_time_left(lr)
+        return timeleft
+    return None
+    
 ############################################################
 
 def get_rooms(api_url, access_token):
@@ -286,7 +334,7 @@ def get_users(api_url, access_token):
 
 def refresh_cache(api_url, access_token, id_or_email):
     logger.info('Reviewing cache ...')
-    rooms, users = get_cache()
+    rooms, users, mock, lastrun = get_cache()
     if not rooms:
         rooms = get_auto_join_rooms(api_url, access_token, id_or_email)
         update_cache(rooms=rooms)
@@ -307,6 +355,7 @@ def get_info_for_xmpp(rooms, users, xmpp_id):
     return (None, None, None, None)
 
 def unread_room(api_url, access_token, id_or_name, name, mid):
+    logger.info('  Checking room %s' % name)
     path = 'room/%s/history/latest' % id_or_name
     valid, r = get(api_url, access_token, path)
     items = []
@@ -334,13 +383,14 @@ def unread_room(api_url, access_token, id_or_name, name, mid):
                 logger.debug('  -- %s on %s by %s' % (id, df(dutc), uname))
                 #print('By %s on %s:\n%s' % (uname, df(dutc), msg))
                 items.append('By %s on %s:\n%s' % (uname, df(dutc), msg))
-        if len(items) > 0:
-            logger.info('  %s: %s new.' % (name, len(items)))
+        #if len(items) > 0:
+            #logger.info('  %s: %s new.' % (name, len(items)))
     else:
         request_error(r)
     return items
 
 def unread_user(api_url, access_token, id_or_email, name, mid):
+    logger.info('  Checking user %s' % name)
     path = 'user/%s/history/latest' % id_or_email
     valid, r = get(api_url, access_token, path)
     items = []
@@ -368,14 +418,14 @@ def unread_user(api_url, access_token, id_or_email, name, mid):
                 logger.debug('  -- "%s on %s by %s' % (id, df(dutc), uname))
                 #print('By %s on %s:\n%s' %  (uname, df(dutc), msg))
                 items.append('By %s on %s:\n%s' % (uname, df(dutc), msg))
-        if len(items) > 0:
-            logger.info('  %s: %s new.' % (name, len(items)))
+        #if len(items) > 0:
+            #logger.info('  %s: %s new.' % (name, len(items)))
     else:
         request_error(r)
     return items
 
 def get_unread_summary(api_url, access_token, rooms, users):
-    logger.info('Looking for unread messages ...')
+    logger.info('Searching for unread messages ...')
     # get last read messages
     # then, for each room or user, check the recent history
     # locate the last read message in the history, and collect newer ones
@@ -410,9 +460,25 @@ def get_unread_summary(api_url, access_token, rooms, users):
     logger.info('Done checking %s rooms/conversations.' % i)
     return items
 
-def display_unread(items):
-    logger.debug('Unread count: %s' % len(items))
+def display_unread_summary(items):
     for key in items:
+        logger.info('  %s: %s new.' % (key, len(items[key])))
+    print ''
+
+def check_mock():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('MOCK'):
+                logger.info('Attempting to use MOCK items ...')
+                sys.argv.remove(ea)
+                rooms, users, mock, lastrun = get_cache()
+                return mock
+                break
+    return None
+
+def display_unread_ios(items):
+    logger.debug('IOS: Unread count: %s' % len(items))
+    for key in items: 
         print('-------------------------------------------')
         print key
         print('-------------------------------------------')
@@ -421,21 +487,50 @@ def display_unread(items):
             print ''
         print ''
 
+def display_unread_desktop(items):
+    logger.debug('Desktop: Unread count: %s' % len(items))
+    for key in items: 
+        print('-------------------------------------------')
+        print key
+        print('-------------------------------------------')
+        for msg in items[key]:
+            print msg
+            print ''
+        print ''
+
+def display_unread(items):
+    if 'iP' in machine:
+        display_unread_ios(items)
+    else:
+        display_unread_desktop(items)
+
 ############################################################
 
 def main():
     api_url, base_url, useremail, access_token = get_conf_info()
-
-    if not check_access_token(api_url, access_token):
-        access_token = get_new_access_token(api_url, base_url, useremail)
-        if check_access_token(api_url, access_token):
-            logger.error('The access token supplied is not valid.')
+    
+    items = check_mock()
+    if not items:
+        timeleft = check_time_left()
+        if timeleft:
+            logger.info('Please wait %s to avoid api limits.' % timeleft)
             sys.exit(1)
-    rooms, users = refresh_cache(api_url, access_token, useremail)
-    items = get_unread_summary(api_url, access_token, rooms, users)
+            
+        if not check_access_token(api_url, access_token):
+            get_new_access_token(api_url, base_url, useremail)
+            logger.info('Configuratiom updated with access token. Start over please.')
+            sys.exit(1)
+
+        rooms, users = refresh_cache(api_url, access_token, useremail)
+        items = get_unread_summary(api_url, access_token, rooms, users)
+        update_cache(mock=items) 
+        
+    display_unread_summary(items)
+    
     show_details = raw_input('Show details? (y/n): ')
     if show_details == 'y':
         display_unread(items)
+
     logger.info('Done.')
 
 ############################################################
