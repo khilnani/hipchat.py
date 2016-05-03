@@ -7,6 +7,12 @@ While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) app
 When run within iOS Pythonista, a native ui allows exploring
 the unread messages. Linux/Mac OS display is limited to the terminal/console
 
+## Installation
+
+- Download or clone the github repo, or:
+  - Pythonista console: `import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()`
+  - Linux/Mac OS Terminal: `python -c "import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()"`
+
 ## Configuration
 
 - Rename `hipchat.sample.conf` to `hipchat.conf` and update values
@@ -55,8 +61,3 @@ end run
 - Under `Services` locate your Service in the `General` category
 - Assign a keyboard shortcut.
 
-## Installation
-
-- Download or clone the github repo, or:
-  - Pythonista console: `import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()`
-  - Linux/Mac OS Terminal: `python -c "import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()"`
