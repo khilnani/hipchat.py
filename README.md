@@ -7,11 +7,13 @@ While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) app
 When run within iOS Pythonista, a native ui allows exploring
 the unread messages. Linux/Mac OS display is limited to the terminal/console
 
-### Configuration
+## Configuration
 
 - Rename `hipchat.sample.conf` to `hipchat.conf` and update values
 
-### Usage
+## Usage
+
+### Note
 
 - When you run the script for the first time, it will request a Personal Access token
 to access Hipchat on your behalf
@@ -19,11 +21,39 @@ to access Hipchat on your behalf
 - Hipchat allows you set configure access permissions eg. read, write, admin.
 - Get a personal access token from: https://www.hipchat.com/account/api
 
-iOS / Pythonista
+### iOS / Pythonista
 - Simple run this script in Pythonista.
 
-Linux/Mac OS
+### Linux/Mac OS
 - Run this script in a linux/os x terminal.
+
+### Mac OS Automator
+
+- Launch `/Applications/Automator`
+- Create a new document of type *Service*
+    - Save as something indicator, eg `hipchat-unread` (be a bit more creative)
+        - The script will be saved to `/Users/USERNAME/Library/Services/hipchat-unread.workflow`
+    - Configure (top ot the screen) to be: Service recieves `no input` in `any application`
+- Add the following workflow action
+  - `Utilities` / `Run AppleScript`
+  ```
+on run {input, parameters}
+	tell application "Terminal"
+		activate
+		if (the (count of the window) = 0) or ¬
+			(the busy of window 1 = true) then
+			tell application "System Events"
+				keystroke "n" using command down
+			end tell
+		end if
+		do script "cd DIR_WITH_SCRIPT && python hipchat.py" in window 1
+	end tell
+	return input
+end run
+  ```
+- Launch `System Preferences` and navigate to `Keyboard` / `Shortcuts`
+- Under `Services` locate your Service in the `General` category
+- Assign a keyboard shortcut.
 
 ## Installation
 
