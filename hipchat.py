@@ -2,7 +2,10 @@
 
 """
 Description:
-A python script to perform basic interactions with Hipchat.
+A python script to summarize unread Hipchat messages.
+When run within iOS Pythonista, a native ui allows exploring
+the unread messages. 
+Linux/Mac OS display is limited to the terminal/console.
 
 License:
 The MIT License (MIT)
@@ -47,11 +50,98 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 print 'Version: ' + __version__
 
 machine = platform.machine()
 print 'Platform: ' + machine
+
+############################################################
+
+if 'iP' in machine:
+    import console
+    import clipboard
+    import ui
+    
+    class HipchatTableView(object):
+        def __init__(self, data=None):
+            self.view = ui.TableView(frame=(0, 0, 640, 640))
+            self.view.name = 'Hipchat - Unread messages'
+            self.allows_selection = True
+            self.view.delegate = self
+            self.data = data
+            self.base_list = None
+            self.key = None
+            self.create_base_items()
+            self.display_base()
+
+        def create_base_items(self):
+            items = []
+            for key in self.data:
+                items.append({
+                    'title': '%s (%s)' % (key, len(self.data[key])),
+                    'key': key})
+            self.base_list = ui.ListDataSource(items)
+            self.base_list.move_enabled = False
+            self.base_list.delete_enabled = False
+
+        def display_base(self):
+            self.key = None
+            self.view.data_source = self.base_list
+            self.view.data_source.number_of_lines = 1
+            self.view.row_height = 45
+            self.view.reload()
+            if not self.view.on_screen:
+                self.view.present('fullscreen', animated=False)
+
+        def tableview_accessory_button_tapped(self, tableview, section, row):
+            txt = tableview.data_source.items[row]
+            r = console.alert('Copy to clipboard?', button1='Yes')
+            if r == 1:
+                clipboard.set(txt)
+                console.hud_alert('Copied to clipboard')
+
+        def tableview_cell_for_row(self, tableview, section, row):
+            def make_cell(title, body):
+                cell = ui.TableViewCell('subtitle')
+                cell.accessory_type = 'detail_button'
+                cell.text_label.text = title
+                # if celltype is None/default, detail_text_label 
+                # does not exist.
+                cell.detail_text_label.text = body
+                cell.detail_text_label.number_of_lines = 7
+                cell.detail_text_label.text_color = '#666666'
+                return cell
+            txt = tableview.data_source.items[row]
+            lines = txt.split('\n')
+            title = lines[0]
+            body = '\n'.join(lines[1:])
+            return make_cell(title, body)
+
+        def display_selection(self, key):
+            self.key = key
+            ds = ui.ListDataSource(self.data[key])
+            ds.tableview_cell_for_row = self.tableview_cell_for_row
+            ds.move_enabled = False
+            ds.delete_enabled = False
+            self.view.data_source = ds
+            self.view.row_height = 150
+            self.view.reload()
+
+        def tableview_did_select(self, tableview, section, row):
+            if self.key:
+                self.display_base()
+            else:
+                key = self.base_list.items[row]['key']
+                self.display_selection(key)
+
+        def tableview_did_deselect(self, tableview, section, row):
+            # Called when a row was de-selected (in multiple selection mode).
+            pass
+
+        def tableview_title_for_delete_button(self, tableview, section, row):
+            # Return the title for the 'swipe-to-***' button.
+            return 'Delete'
 
 ############################################################
 
@@ -95,9 +185,12 @@ def nows():
 
 def get_time_left(date_old):
     diff_str = None
+    logger.debug('Date %s', date_old)
     now = datetime.datetime.now()
+    logger.debug('Now %s', now)
     diff = now - date_old
     diff_seconds = diff.total_seconds()
+    logger.debug('Diff %s', diff_seconds)
     if diff_seconds < API_WAIT_TIME:
         left = API_WAIT_TIME - diff_seconds
         m = int(left / 60)
@@ -211,26 +304,26 @@ def get_cache():
     except ValueError:
         logger.error('Ignoring: Invalid JSON in %s' % CONF_FILE)
 
-    return (None, None)
+    return (None, None, None, None)
 
 def update_cache(rooms=None, users=None, mock=None):
     rms, us, mk, lastrun = get_cache()
     c = {}
 
-    if rooms:
+    if rooms != None:
         c['ROOMS'] = rooms
-    elif rms:
+    elif rms != None:
         c['ROOMS'] = rms
 
-    if users:
+    if users != None:
         c['USERS'] = users
-    elif us:
+    elif us != None:
         c['USERS'] = us
 
-    if mock:
+    if mock != None:
         c['MOCK'] = mock
         c['LASTRUN'] = nows()
-    elif us:
+    elif mk != None:
         c['MOCK'] = mk
         c['LASTRUN'] = lastrun
 
@@ -287,8 +380,8 @@ def get_new_access_token(api_url, base_url, useremail=None):
 
 def check_time_left():
     rooms, users, mock, lastrun = get_cache()
+    logger.debug('Last run %s', lastrun)
     if lastrun:
-        logger.debug('Last run %s', lastrun)
         lr = dp(lastrun)
         timeleft = get_time_left(lr)
         return timeleft
@@ -382,7 +475,7 @@ def unread_room(api_url, access_token, id_or_name, name, mid):
             if newer:
                 logger.debug('  -- %s on %s by %s' % (id, df(dutc), uname))
                 #print('By %s on %s:\n%s' % (uname, df(dutc), msg))
-                items.append('By %s on %s:\n%s' % (uname, df(dutc), msg))
+                items.append('%s: %s\n%s' % (uname, df(dutc), msg))
         #if len(items) > 0:
             #logger.info('  %s: %s new.' % (name, len(items)))
     else:
@@ -417,7 +510,7 @@ def unread_user(api_url, access_token, id_or_email, name, mid):
             if newer:
                 logger.debug('  -- "%s on %s by %s' % (id, df(dutc), uname))
                 #print('By %s on %s:\n%s' %  (uname, df(dutc), msg))
-                items.append('By %s on %s:\n%s' % (uname, df(dutc), msg))
+                items.append('%s: %s\n%s' % (uname, df(dutc), msg))
         #if len(items) > 0:
             #logger.info('  %s: %s new.' % (name, len(items)))
     else:
@@ -477,15 +570,7 @@ def check_mock():
     return None
 
 def display_unread_ios(items):
-    logger.debug('IOS: Unread count: %s' % len(items))
-    for key in items: 
-        print('-------------------------------------------')
-        print key
-        print('-------------------------------------------')
-        for msg in items[key]:
-            print msg
-            print ''
-        print ''
+    htv = HipchatTableView(data=items)
 
 def display_unread_desktop(items):
     logger.debug('Desktop: Unread count: %s' % len(items))
@@ -499,10 +584,13 @@ def display_unread_desktop(items):
         print ''
 
 def display_unread(items):
+    display_unread_summary(items)
     if 'iP' in machine:
         display_unread_ios(items)
     else:
-        display_unread_desktop(items)
+        show_details = raw_input('Show details? (y/n): ')
+        if show_details == 'y':
+            display_unread_desktop(items)
 
 ############################################################
 
@@ -513,7 +601,7 @@ def main():
     if not items:
         timeleft = check_time_left()
         if timeleft:
-            logger.info('Please wait %s to avoid api limits.' % timeleft)
+            logger.info('Please wait %s to honor api limits.' % timeleft)
             sys.exit(1)
             
         if not check_access_token(api_url, access_token):
@@ -523,14 +611,9 @@ def main():
 
         rooms, users = refresh_cache(api_url, access_token, useremail)
         items = get_unread_summary(api_url, access_token, rooms, users)
-        update_cache(mock=items) 
+        update_cache(mock=items)
         
-    display_unread_summary(items)
-    
-    show_details = raw_input('Show details? (y/n): ')
-    if show_details == 'y':
-        display_unread(items)
-
+    display_unread(items)
     logger.info('Done.')
 
 ############################################################
