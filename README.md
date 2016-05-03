@@ -42,7 +42,7 @@ to access Hipchat on your behalf
     - Configure (top ot the screen) to be: Service recieves `no input` in `any application`
 - Add the following workflow action
   - `Utilities` / `Run AppleScript`
-  ```
+  ```javascript
 on run {input, parameters}
 	tell application "Terminal"
 		activate
