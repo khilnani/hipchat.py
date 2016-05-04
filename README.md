@@ -5,7 +5,7 @@ A python script to display unread hipchat rooms/conversations.
 While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) application, the script runs on any linux/mac os environment.
 
 When run within iOS Pythonista, a native ui allows exploring
-the unread messages. Linux/Mac OS display is limited to the terminal/console
+the unread messages. Linux/Mac OS display is limited to the terminal/console.
 
 ## Installation
 
