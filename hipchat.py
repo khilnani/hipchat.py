@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 
 """
@@ -92,7 +93,7 @@ if 'iP' in machine:
             self.view.row_height = 45
             self.view.reload()
             if not self.view.on_screen:
-                self.view.present('fullscreen', animated=False)
+                self.view.present('fullscreen', animated=True)
 
         def tableview_accessory_button_tapped(self, tableview, section, row):
             txt = tableview.data_source.items[row]
