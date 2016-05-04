@@ -21,17 +21,18 @@ the unread messages. Linux/Mac OS display is limited to the terminal/console
 
 ### Note
 
-- When you run the script for the first time, it will request a Personal Access token
-to access Hipchat on your behalf
+- When you run the script for the first time, it will request a Personal Access token to access Hipchat on your behalf
 - *This scripts only requires read access.*
 - Hipchat allows you set configure access permissions eg. read, write, admin.
 - Get a personal access token from: https://www.hipchat.com/account/api
 
-### iOS / Pythonista
-- Simple run this script in Pythonista.
+### Execution 
 
-### Linux/Mac OS
-- Run this script in a linux/os x terminal.
+- Simply run this script in Pythonista, or in a Linux/Mac OS Terminal
+- Example. `python hipchat.py [LASTRUN | DETAILS | NODETAILS]`
+  - `LASTRUN`: Use cached data, view recent info without calling apis.
+  - `DETAILS`: Linux/Mac OS Only, auto show unread details.
+  - `NODETAILS`: Linux/Mac OS Only, skip display of unread details.
 
 ### Mac OS Automator
 
@@ -60,4 +61,3 @@ end run
 - Launch `System Preferences` and navigate to `Keyboard` / `Shortcuts`
 - Under `Services` locate your Service in the `General` category
 - Assign a keyboard shortcut.
-

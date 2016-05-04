@@ -51,7 +51,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 print 'Version: ' + __version__
 
 machine = platform.machine()
@@ -291,15 +291,15 @@ def get_cache():
             except KeyError:
                 users= None
             try:
-                mock = c['MOCK']
-            except KeyError:
-                mock = None
-            try:
                 lastrun = c['LASTRUN']
             except KeyError:
                 lastrun = None
+            try:
+                lastrun_date = c['LASTRUN_DATE']
+            except KeyError:
+                lastrun_date = None
 
-            return (rooms, users, mock, lastrun)
+            return (rooms, users, lastrun, lastrun_date)
     except IOError:
         logger.trace('Ignoring: Could not find %s' % CACHE_FILE)
     except ValueError:
@@ -307,8 +307,8 @@ def get_cache():
 
     return (None, None, None, None)
 
-def update_cache(rooms=None, users=None, mock=None):
-    rms, us, mk, lastrun = get_cache()
+def update_cache(rooms=None, users=None, lastrun=None):
+    rms, us, lr, lastrun_date = get_cache()
     c = {}
 
     if rooms != None:
@@ -321,12 +321,12 @@ def update_cache(rooms=None, users=None, mock=None):
     elif us != None:
         c['USERS'] = us
 
-    if mock != None:
-        c['MOCK'] = mock
-        c['LASTRUN'] = nows()
-    elif mk != None:
-        c['MOCK'] = mk
+    if lastrun != None:
         c['LASTRUN'] = lastrun
+        c['LASTRUN_DATE'] = nows()
+    elif lr != None:
+        c['LASTRUN'] = lr
+        c['LASTRUN_DATE'] = lastrun_date
 
     try:
         with open(CACHE_FILE, 'w') as c_file:
@@ -380,10 +380,10 @@ def get_new_access_token(api_url, base_url, useremail=None):
     return access_token
 
 def check_time_left():
-    rooms, users, mock, lastrun = get_cache()
-    logger.debug('Last run %s', lastrun)
-    if lastrun:
-        lr = dp(lastrun)
+    rooms, users, lastrun, lastrun_date = get_cache()
+    logger.debug('Last run %s', lastrun_date)
+    if lastrun_date:
+        lr = dp(lastrun_date)
         timeleft = get_time_left(lr)
         return timeleft
     return None
@@ -428,7 +428,7 @@ def get_users(api_url, access_token):
 
 def refresh_cache(api_url, access_token, id_or_email):
     logger.info('Reviewing cache ...')
-    rooms, users, mock, lastrun = get_cache()
+    rooms, users, lastrun, lastrun_date = get_cache()
     if not rooms:
         rooms = get_auto_join_rooms(api_url, access_token, id_or_email)
         update_cache(rooms=rooms)
@@ -559,14 +559,14 @@ def display_unread_summary(items):
         logger.info('  %s: %s new.' % (key, len(items[key])))
     print ''
 
-def check_mock():
+def check_lastrun():
     if len(sys.argv) > 1:
         for ea in sys.argv:
-            if ea in ('MOCK'):
-                logger.info('Attempting to use MOCK items ...')
+            if ea in ('LASTRUN'):
+                logger.info('Using cached data from last run ...')
                 sys.argv.remove(ea)
-                rooms, users, mock, lastrun = get_cache()
-                return mock
+                rooms, users, lastrun, lastrun_date = get_cache()
+                return lastrun
                 break
     return None
 
@@ -584,21 +584,41 @@ def display_unread_desktop(items):
             print ''
         print ''
 
+def check_show_details():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('DETAILS'):
+                sys.argv.remove(ea)
+                return True
+                break
+        for ea in sys.argv:
+            if ea in ('NODETAILS'):
+                sys.argv.remove(ea)
+                return False
+                break 
+    return None
+
 def display_unread(items):
     display_unread_summary(items)
     if 'iP' in machine:
         display_unread_ios(items)
     else:
-        show_details = raw_input('Show details? (y/n): ')
-        if show_details == 'y':
+        show_details = check_show_details()
+        if show_details == True:
             display_unread_desktop(items)
+        elif show_details == None:
+            show_details_sel = raw_input('Show details? (y/n): ')
+            if show_details_sel == 'y':
+                display_unread_desktop(items)
+        else:
+            logger.info('Detailed display suppressed.')
 
 ############################################################
 
 def main():
     api_url, base_url, useremail, access_token = get_conf_info()
     
-    items = check_mock()
+    items = check_lastrun()
     if not items:
         timeleft = check_time_left()
         if timeleft:
@@ -612,7 +632,7 @@ def main():
 
         rooms, users = refresh_cache(api_url, access_token, useremail)
         items = get_unread_summary(api_url, access_token, rooms, users)
-        update_cache(mock=items)
+        update_cache(lastrun=items)
         
     display_unread(items)
     logger.info('Done.')
