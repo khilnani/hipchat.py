@@ -5,7 +5,7 @@
 Description:
 A python script to summarize unread Hipchat messages.
 When run within iOS Pythonista, a native ui allows exploring
-the unread messages. 
+the unread messages.
 Linux/Mac OS display is limited to the terminal/console.
 
 License:
@@ -63,7 +63,7 @@ if 'iP' in machine:
     import console
     import clipboard
     import ui
-    
+
     class HipchatTableView(object):
         def __init__(self, data=None):
             self.view = ui.TableView(frame=(0, 0, 640, 640))
@@ -107,7 +107,7 @@ if 'iP' in machine:
                 cell = ui.TableViewCell('subtitle')
                 cell.accessory_type = 'detail_button'
                 cell.text_label.text = title
-                # if celltype is None/default, detail_text_label 
+                # if celltype is None/default, detail_text_label
                 # does not exist.
                 cell.detail_text_label.text = body
                 cell.detail_text_label.number_of_lines = 7
@@ -333,8 +333,7 @@ def update_cache(rooms=None, users=None, lastrun=None):
             #print(conf)
             json.dump(c, c_file)
     except IOError:
-        logger.error('Could not write %s' % CACHE_FILE)
-        sys.exit(1)
+        logger.warning('Could not write %s' % CACHE_FILE)
 
 ############################################################
 
@@ -387,7 +386,7 @@ def check_time_left():
         timeleft = get_time_left(lr)
         return timeleft
     return None
-    
+
 ############################################################
 
 def get_rooms(api_url, access_token):
@@ -443,9 +442,9 @@ def get_info_for_xmpp(rooms, users, xmpp_id):
     for r in rooms:
         if r['xmpp_jid'] == xmpp_id:
             return (r['id'], 'room', r['name'], None)
-    for u in users:
-        if u['xmpp_jid'] == xmpp_id:
-            return (u['id'], 'user', u['name'], u['email'])
+#    for u in users:
+#        if u['xmpp_jid'] == xmpp_id:
+#            return (u['id'], 'user', u['name'], u['email'])
     return (None, None, None, None)
 
 def unread_room(api_url, access_token, id_or_name, name, mid):
@@ -575,7 +574,7 @@ def display_unread_ios(items):
 
 def display_unread_desktop(items):
     logger.debug('Desktop: Unread count: %s' % len(items))
-    for key in items: 
+    for key in items:
         print('-------------------------------------------')
         print key
         print('-------------------------------------------')
@@ -595,7 +594,7 @@ def check_show_details():
             if ea in ('NODETAILS'):
                 sys.argv.remove(ea)
                 return False
-                break 
+                break
     return None
 
 def display_unread(items):
@@ -617,14 +616,14 @@ def display_unread(items):
 
 def main():
     api_url, base_url, useremail, access_token = get_conf_info()
-    
+
     items = check_lastrun()
     if not items:
         timeleft = check_time_left()
         if timeleft:
             logger.info('Please wait %s to honor api limits.' % timeleft)
             sys.exit(1)
-            
+
         if not check_access_token(api_url, access_token):
             get_new_access_token(api_url, base_url, useremail)
             logger.info('Configuratiom updated with access token. Start over please.')
@@ -633,9 +632,18 @@ def main():
         rooms, users = refresh_cache(api_url, access_token, useremail)
         items = get_unread_summary(api_url, access_token, rooms, users)
         update_cache(lastrun=items)
-        
+
     display_unread(items)
     logger.info('Done.')
+
+############################################################
+
+def lambda_handler(event, context):
+    sys.argv.append('NODETAILS')
+    setup_logging()
+    logger.info('Platform: ' + machine)
+    main()
+    return 'Done'
 
 ############################################################
 

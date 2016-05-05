@@ -26,7 +26,7 @@ the unread messages. Linux/Mac OS display is limited to the terminal/console.
 - Hipchat allows you set configure access permissions eg. read, write, admin.
 - Get a personal access token from: https://www.hipchat.com/account/api
 
-### Execution 
+### Execution
 
 - Simply run this script in Pythonista, or in a Linux/Mac OS Terminal
 - Example. `python hipchat.py [LASTRUN | DETAILS | NODETAILS]`
@@ -61,3 +61,30 @@ end run
 - Launch `System Preferences` and navigate to `Keyboard` / `Shortcuts`
 - Under `Services` locate your Service in the `General` category
 - Assign a keyboard shortcut.
+
+### AWS Lambda
+
+The main script, `hipchat.py` can also be run as a AWS Lambda function, with its output saved to S3. An API setup in the AWS API Gateway can then return the info saved in S3, presumably the most recent status (within 15 min, based on the event config below)
+
+- Create a Lambda function, with a scheduled event.
+- To make things easier, select the blueprint: `lambda-canary` as below:
+    - Configure Event source
+        - Event source type: `CloudWatch Events - Schedule`
+        - Rule name: `hipchatunread`
+        - Schedule expression: `rate(15 minutes)`
+    - Configure function
+        - Name: `hipchat-unread`
+        - Code: use the default
+        - Runtime: `Python 2.7`
+        - Handler: `lambda_function.lambda_handler`
+        - Role: `Basic with DynamoDB`
+        - Memory: `128` mb
+        - Timeout: `3` min `0` sec
+        - VPC: `No VPC`
+- Once setup,
+    - Setup a virtual environment using the `requirements.txt` package list
+    - Run `bin/lambda-package.sh`
+    - Upload `lambda.zip`
+    - Update
+        - Handler: `hipchat.lambda_handler`
+    - Run `Test`
