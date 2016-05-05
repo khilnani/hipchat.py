@@ -51,7 +51,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.2.1'
+__version__ = '0.2.3'
 print 'Version: ' + __version__
 
 machine = platform.machine()
@@ -442,13 +442,13 @@ def get_info_for_xmpp(rooms, users, xmpp_id):
     for r in rooms:
         if r['xmpp_jid'] == xmpp_id:
             return (r['id'], 'room', r['name'], None)
-#    for u in users:
-#        if u['xmpp_jid'] == xmpp_id:
-#            return (u['id'], 'user', u['name'], u['email'])
+    for u in users:
+        if u['xmpp_jid'] == xmpp_id:
+            return (u['id'], 'user', u['name'], u['email'])
     return (None, None, None, None)
 
 def unread_room(api_url, access_token, id_or_name, name, mid):
-    logger.info('  Checking room %s' % name)
+    logger.trace('  -- unread_room %s' % name)
     path = 'room/%s/history/latest' % id_or_name
     valid, r = get(api_url, access_token, path)
     items = []
@@ -483,7 +483,7 @@ def unread_room(api_url, access_token, id_or_name, name, mid):
     return items
 
 def unread_user(api_url, access_token, id_or_email, name, mid):
-    logger.info('  Checking user %s' % name)
+    logger.trace('  -- unread_user %s' % name)
     path = 'user/%s/history/latest' % id_or_email
     valid, r = get(api_url, access_token, path)
     items = []
@@ -534,16 +534,19 @@ def get_unread_summary(api_url, access_token, rooms, users):
             d = dt(ts)
             xmpp_id= item['xmppJid']
             id, idtype, name, email = get_info_for_xmpp(rooms, users, xmpp_id)
+            logger.trace('  ## %s (%s): %s (%s) %s' % (id, xmpp_id, df(d), ts, mid))
             if id:
                 i=i+1
-                logger.debug('  %s. %s (%s)' % (i, name, dfiso(d)))
+                logger.debug('  ++ %s. %s (%s)' % (i, name, dfiso(d)))
             logger.trace('  ## %s (%s): %s (%s) %s' % (id, xmpp_id, df(d), ts, mid))
             if id and idtype == 'room':
+                logger.info('  %s. %s %s' % (i, idtype.capitalize(), name))
                 #print('ROOM: %s (%s) MSG: %s (%s)' % (name, id, df(d), mid))
                 _items = unread_room(api_url, access_token, id, name, mid)
                 if len(_items) > 0:
                     items[name] = _items
             elif id and idtype =='user':
+                logger.info('  %s. %s %s' % (i, idtype.capitalize(), name))
                 #print('USER: %s (%s) MSG: %s (%s)' % (name, id, df(d), mid))
                 _items = unread_user(api_url, access_token, id, name, mid)
                 if len(_items) > 0:
