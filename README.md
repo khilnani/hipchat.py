@@ -1,6 +1,8 @@
 ## hipchat.py
 
-A python script to display unread hipchat rooms/conversations.
+A python script to display unread hipchat rooms/conversations. 
+
+On iOS, Hipchat notifications sometimes do not show, or it can be easy to miss one. This script allows you to perform a review of any unread notifications.
 
 While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) application, the script runs on any linux/mac os environment.
 
