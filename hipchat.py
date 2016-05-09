@@ -281,34 +281,55 @@ def get_conf_info():
         logger.error('Invalid JSON in %s' % CONF_FILE)
         sys.exit(1)
 
+
+def set_s3_cache(data):
+    import boto3
+    s3 = boto3.resource('s3')
+    data = json.dumps(data)
+    s3.Object('khilnani-sync', CACHE_FILE).put(Body=data)
+
+def get_s3_cache():
+    import boto3
+    s3 = boto3.resource('s3')
+    data = s3.Object('khilnani-sync', CACHE_FILE).get()['Body'].read()
+    return json.loads( data )
+
 def get_cache():
+    c = None
     try:
         with open(CACHE_FILE, 'r') as c_file:
             c = json.load(c_file)
-            try:
-                rooms = c['ROOMS']
-            except KeyError:
-                rooms = None
-            try:
-                users = c['USERS']
-            except KeyError:
-                users= None
-            try:
-                lastrun = c['LASTRUN']
-            except KeyError:
-                lastrun = None
-            try:
-                lastrun_date = c['LASTRUN_DATE']
-            except KeyError:
-                lastrun_date = None
-
-            return (rooms, users, lastrun, lastrun_date)
     except IOError:
         logger.trace('Ignoring: Could not find %s' % CACHE_FILE)
+        return (None, None, None, None)
     except ValueError:
         logger.error('Ignoring: Invalid JSON in %s' % CONF_FILE)
+        return (None, None, None, None)
 
-    return (None, None, None, None)
+    try:
+        c = get_s3_cache()
+    except Exception as e:
+        print(str(e))
+
+    try:
+        rooms = c['ROOMS']
+    except KeyError:
+        rooms = None
+    try:
+        users = c['USERS']
+    except KeyError:
+        users= None
+    try:
+        lastrun = c['LASTRUN']
+    except KeyError:
+        lastrun = None
+    try:
+        lastrun_date = c['LASTRUN_DATE']
+    except KeyError:
+        lastrun_date = None
+
+    return (rooms, users, lastrun, lastrun_date)
+
 
 def update_cache(rooms=None, users=None, lastrun=None):
     rms, us, lr, lastrun_date = get_cache()
@@ -330,6 +351,11 @@ def update_cache(rooms=None, users=None, lastrun=None):
     elif lr != None:
         c['LASTRUN'] = lr
         c['LASTRUN_DATE'] = lastrun_date
+
+    try:
+        set_s3_cache(c)
+    except Exception as e:
+        print(str(e))
 
     try:
         with open(CACHE_FILE, 'w') as c_file:
@@ -620,6 +646,7 @@ def display_unread(items):
 
 ############################################################
 
+
 def main():
     api_url, base_url, useremail, access_token = get_conf_info()
 
@@ -645,7 +672,7 @@ def main():
 ############################################################
 
 def lambda_handler(event, context):
-    sys.argv.append('NODETAILS')
+    sys.argv.append('LASTRUN NODETAILS')
     setup_logging()
     logger.info('Platform: ' + machine)
     main()
