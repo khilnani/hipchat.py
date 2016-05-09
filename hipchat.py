@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # coding: utf-8
 
 """
@@ -30,6 +30,8 @@ To use:
 ############################################################
 
 
+from __future__ import absolute_import
+from __future__ import print_function
 import platform
 import sys
 import logging
@@ -42,6 +44,7 @@ import re
 import dateutil.parser
 # pip install requests[security] --upgrade
 import requests
+from six.moves import input
 
 ############################################################
 
@@ -52,10 +55,10 @@ API_WAIT_TIME = 300 # seconds
 logger = None
 
 __version__ = '0.2.3'
-print 'Version: ' + __version__
+print(('Version: ' + __version__))
 
 machine = platform.machine()
-print 'Platform: ' + machine
+print(('Platform: ' + machine))
 
 ############################################################
 
@@ -147,7 +150,7 @@ if 'iP' in machine:
 ############################################################
 
 def pp(o):
-    print json.dumps(o, indent=4, sort_keys=True)
+    print((json.dumps(o, indent=4, sort_keys=True)))
 
 def dp(dstr):
     d = None
@@ -162,7 +165,7 @@ def df(d):
     try:
         sf = d.strftime('%b %d, %Y %H:%M:%S')
     except Exception as e:
-        print (e)
+        print(e)
     return sf
 
 def dfiso(d):
@@ -170,7 +173,7 @@ def dfiso(d):
     try:
         sf = d.strftime('%Y/%m/%d %H:%M:%S')
     except Exception as e:
-        print (e)
+        print(e)
     return sf
 
 def dt(ts):
@@ -178,7 +181,7 @@ def dt(ts):
     try:
         d = datetime.datetime.utcfromtimestamp(float(ts))
     except Exception as e:
-        print (e)
+        print(e)
     return d
 
 def nows():
@@ -222,7 +225,7 @@ def setup_logging(log_level='INFO'):
                 break
 
     logger.setLevel(log_level)
-    print('Log Level: %s' % log_level )
+    print(('Log Level: %s' % log_level ))
 
 def request_error(req):
     logger.error('HTTP Status %s ' % req.status_code)
@@ -371,7 +374,7 @@ def check_access_token(api_url, access_token):
 def get_new_access_token(api_url, base_url, useremail=None):
     logger.info('Updating access token ...')
     if not useremail:
-        useremail = raw_input('User email:')
+        useremail = input('User email:')
     logger.info('Tip: Get a personal access token from: https://www.hipchat.com/account/api')
     access_token = getpass.getpass('Access token:')
     if access_token:
@@ -529,12 +532,12 @@ def get_unread_summary(api_url, access_token, rooms, users):
     if valid:
         json_data = r.json()
         for item in json_data['items']:
+            logger.trace('#################################')
             mid = item['mid']
             ts = item['timestamp']
             d = dt(ts)
             xmpp_id= item['xmppJid']
             id, idtype, name, email = get_info_for_xmpp(rooms, users, xmpp_id)
-            logger.trace('  ## %s (%s): %s (%s) %s' % (id, xmpp_id, df(d), ts, mid))
             if id:
                 i=i+1
                 logger.debug('  ++ %s. %s (%s)' % (i, name, dfiso(d)))
@@ -559,7 +562,7 @@ def get_unread_summary(api_url, access_token, rooms, users):
 def display_unread_summary(items):
     for key in items:
         logger.info('  %s: %s new.' % (key, len(items[key])))
-    print ''
+    print('')
 
 def check_lastrun():
     if len(sys.argv) > 1:
@@ -579,12 +582,12 @@ def display_unread_desktop(items):
     logger.debug('Desktop: Unread count: %s' % len(items))
     for key in items:
         print('-------------------------------------------')
-        print key
+        print(key)
         print('-------------------------------------------')
         for msg in items[key]:
-            print msg
-            print ''
-        print ''
+            print(msg)
+            print('')
+        print('')
 
 def check_show_details():
     if len(sys.argv) > 1:
@@ -609,7 +612,7 @@ def display_unread(items):
         if show_details == True:
             display_unread_desktop(items)
         elif show_details == None:
-            show_details_sel = raw_input('Show details? (y/n): ')
+            show_details_sel = input('Show details? (y/n): ')
             if show_details_sel == 'y':
                 display_unread_desktop(items)
         else:

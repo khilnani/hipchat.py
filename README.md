@@ -86,7 +86,9 @@ The main script, `hipchat.py` can also be run as a AWS Lambda function, with its
 - Once setup,
     - Setup a virtual environment using the `requirements.txt` package list
     - Run `bin/lambda-package.sh`
-    - Upload `lambda.zip`
+    - Upload `lambda.zip` 
+        - Manually via the upload UI, or
+        - Run `bin/lambda-deploy.sh`
     - Update
         - Handler: `hipchat.lambda_handler`
     - Run `Test`
