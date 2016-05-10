@@ -317,20 +317,20 @@ def get_s3_cache(bucket):
     logger.info('Reading cache from S3: %s ...' % bucket)
     try:
         import boto3
+        import botocore
         s3 = boto3.resource('s3')
         data = s3.Object(bucket, CACHE_FILE).get()['Body'].read()
         return json.loads( data )
     except ImportError:
         logger.error('Please run: pip install boto3')
+    except botocore.exceptions.ClientError as e:
+        pass
+    return {}
 
 def get_cache(s3_bucket):
     c = None
     if is_s3():
-        try:
-            c = get_s3_cache(s3_bucket)
-        except Exception as e:
-            logger.error(str(e))
-            sys.exit(1)
+        c = get_s3_cache(s3_bucket)
     else:
         try:
             with open(CACHE_FILE, 'r') as c_file:
@@ -697,7 +697,7 @@ def main():
             logger.info('Configuratiom updated with access token. Start over please.')
             sys.exit(1)
 
-        update_cache(set_lastrun_date=True)
+        update_cache(s3_bucket, set_lastrun_date=True)
         rooms, users = refresh_cache(s3_bucket, api_url, access_token, useremail)
         items = get_unread_summary(api_url, access_token, rooms, users)
         update_cache(s3_bucket, lastrun=items)
