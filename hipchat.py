@@ -54,7 +54,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.2.3'
+__version__ = '0.3.0'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
