@@ -282,13 +282,24 @@ def get_conf_info():
         sys.exit(1)
 
 
+def is_s3():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('S3'):
+                return True
+                break
+    return False
+
+
 def set_s3_cache(data):
     import boto3
+    logger.info('Saving cache to S3 ...')
     s3 = boto3.resource('s3')
     data = json.dumps(data)
     s3.Object('khilnani-sync', CACHE_FILE).put(Body=data)
 
 def get_s3_cache():
+    logger.info('Reading cache from S3 ...')
     import boto3
     s3 = boto3.resource('s3')
     data = s3.Object('khilnani-sync', CACHE_FILE).get()['Body'].read()
@@ -296,20 +307,21 @@ def get_s3_cache():
 
 def get_cache():
     c = None
-    try:
-        with open(CACHE_FILE, 'r') as c_file:
-            c = json.load(c_file)
-    except IOError:
-        logger.trace('Ignoring: Could not find %s' % CACHE_FILE)
-        return (None, None, None, None)
-    except ValueError:
-        logger.error('Ignoring: Invalid JSON in %s' % CONF_FILE)
-        return (None, None, None, None)
-
-    try:
-        c = get_s3_cache()
-    except Exception as e:
-        print(str(e))
+    if is_s3():
+        try:
+            c = get_s3_cache()
+        except Exception as e:
+            print(str(e))
+    else:
+        try:
+            with open(CACHE_FILE, 'r') as c_file:
+                c = json.load(c_file)
+        except IOError:
+            logger.trace('Ignoring: Could not find %s' % CACHE_FILE)
+            return (None, None, None, None)
+        except ValueError:
+            logger.error('Ignoring: Invalid JSON in %s' % CONF_FILE)
+            return (None, None, None, None)
 
     try:
         rooms = c['ROOMS']
@@ -331,7 +343,7 @@ def get_cache():
     return (rooms, users, lastrun, lastrun_date)
 
 
-def update_cache(rooms=None, users=None, lastrun=None):
+def update_cache(rooms=None, users=None, lastrun=None, set_lastrun_date=False):
     rms, us, lr, lastrun_date = get_cache()
     c = {}
 
@@ -352,17 +364,21 @@ def update_cache(rooms=None, users=None, lastrun=None):
         c['LASTRUN'] = lr
         c['LASTRUN_DATE'] = lastrun_date
 
-    try:
-        set_s3_cache(c)
-    except Exception as e:
-        print(str(e))
+    if set_lastrun_date:
+        c['LASTRUN_DATE'] = nows()
 
-    try:
-        with open(CACHE_FILE, 'w') as c_file:
-            #print(conf)
-            json.dump(c, c_file)
-    except IOError:
-        logger.warning('Could not write %s' % CACHE_FILE)
+    if is_s3():
+        try:
+            set_s3_cache(c)
+        except Exception as e:
+            print(str(e))
+    else:
+        try:
+            with open(CACHE_FILE, 'w') as c_file:
+                #print(conf)
+                json.dump(c, c_file)
+        except IOError:
+            logger.warning('Could not write %s' % CACHE_FILE)
 
 ############################################################
 
@@ -590,11 +606,11 @@ def display_unread_summary(items):
         logger.info('  %s: %s new.' % (key, len(items[key])))
     print('')
 
-def check_lastrun():
+def use_lastrun_cache():
     if len(sys.argv) > 1:
         for ea in sys.argv:
-            if ea in ('LASTRUN'):
-                logger.info('Using cached data from last run ...')
+            if ea in ('CACHE'):
+                logger.info('Using cached data  ...')
                 sys.argv.remove(ea)
                 rooms, users, lastrun, lastrun_date = get_cache()
                 return lastrun
@@ -615,7 +631,7 @@ def display_unread_desktop(items):
             print('')
         print('')
 
-def check_show_details():
+def is_show_details():
     if len(sys.argv) > 1:
         for ea in sys.argv:
             if ea in ('DETAILS'):
@@ -634,7 +650,7 @@ def display_unread(items):
     if 'iP' in machine:
         display_unread_ios(items)
     else:
-        show_details = check_show_details()
+        show_details = is_show_details()
         if show_details == True:
             display_unread_desktop(items)
         elif show_details == None:
@@ -650,7 +666,7 @@ def display_unread(items):
 def main():
     api_url, base_url, useremail, access_token = get_conf_info()
 
-    items = check_lastrun()
+    items = use_lastrun_cache()
     if not items:
         timeleft = check_time_left()
         if timeleft:
@@ -662,6 +678,7 @@ def main():
             logger.info('Configuratiom updated with access token. Start over please.')
             sys.exit(1)
 
+        update_cache(set_lastrun_date=True)
         rooms, users = refresh_cache(api_url, access_token, useremail)
         items = get_unread_summary(api_url, access_token, rooms, users)
         update_cache(lastrun=items)
@@ -672,7 +689,8 @@ def main():
 ############################################################
 
 def lambda_handler(event, context):
-    sys.argv.append('LASTRUN NODETAILS')
+    sys.argv.append('NODETAILS')
+    sys.argv.append('S3')
     setup_logging()
     logger.info('Platform: ' + machine)
     main()

@@ -31,10 +31,20 @@ the unread messages. Linux/Mac OS display is limited to the terminal/console.
 ### Execution
 
 - Simply run this script in Pythonista, or in a Linux/Mac OS Terminal
-- Example. `python hipchat.py [LASTRUN | DETAILS | NODETAILS]`
-  - `LASTRUN`: Use cached data, view recent info without calling apis.
+- Example. `python hipchat.py [ CACHE | DETAILS | NODETAILS | S3 ]`
+  - `CACHE`: Use cached data, view recent info without calling apis. Each execution saves to cache.
   - `DETAILS`: Linux/Mac OS Only, auto show unread details.
   - `NODETAILS`: Linux/Mac OS Only, skip display of unread details.
+  - `S3`: Use Amazon S3 instead of a local file to store cache. 
+    - Uses default boto3 settings for AWS Credentials
+        - See: http://boto3.readthedocs.io/en/latest/guide/configuration.html
+    - Especially useful if you desire to setup the script to update S3 based on a cron,
+        and use another instance to read from S3. 
+    - This would provide faster views of unread messages at the cost of some latency due to cache interval.
+    - Example: 
+        - Cron at 5+ min interval `python hipchat.py S3 NODETAILS`
+        - Read from S3: `python hipchat.py S3 CACHE`
+
 
 ### Mac OS Automator
 
@@ -66,7 +76,14 @@ end run
 
 ### AWS Lambda
 
-The main script, `hipchat.py` can also be run as a AWS Lambda function, with its output saved to S3. An API setup in the AWS API Gateway can then return the info saved in S3, presumably the most recent status (within 15 min, based on the event config below)
+The main script, `hipchat.py` can also be run as a AWS Lambda function, with its output saved to S3. 
+An API setup in the AWS API Gateway can then return the info saved in S3, presumably the most 
+recent status (within 15 min, based on the event config below)
+
+- This would provide faster views of unread messages at the cost of some latency due to cache interval.
+
+> - This is effectively, the same as setting up a cron at 5+ min interval: `python hipchat.py S3 NODETAILS`
+> - To read from S3: `python hipchat.py S3 CACHE`
 
 - Create a Lambda function, with a scheduled event.
 - To make things easier, select the blueprint: `lambda-canary` as below:
@@ -92,3 +109,6 @@ The main script, `hipchat.py` can also be run as a AWS Lambda function, with its
     - Update
         - Handler: `hipchat.lambda_handler`
     - Run `Test`
+    - If executed correctly, schedule/push to Production
+- To read from the S3 cache 
+    - Read from S3: `python hipchat.py S3 CACHE`
