@@ -34,6 +34,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import platform
 import sys
+import os
 import logging
 import urllib2
 import getpass
@@ -54,7 +55,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
@@ -234,8 +235,8 @@ def request_error(req):
 
 ############################################################
 
-def update_conf_info(token=None, email=None):
-    api_url, base_url, useremail, access_token = get_conf_info()
+def update_conf_info(token=None, email=None, s3_bucket=None):
+    api_url, base_url, useremail, access_token, s3_b = get_conf_info()
     conf = {}
 
     if api_url:
@@ -250,6 +251,10 @@ def update_conf_info(token=None, email=None):
         conf['ACCESS_TOKEN'] = token
     elif access_token:
         conf['ACCESS_TOKEN'] = access_token
+    if s3_bucket:
+        conf['HIPCHAT_S3_BUCKET'] = s3_bucket
+    elif s3_b:
+        conf['HIPCHAT_S3_BUCKET'] = s3_b
 
     try:
         with open(CONF_FILE, 'w') as conf_file:
@@ -273,7 +278,15 @@ def get_conf_info():
                 access_token = conf['ACCESS_TOKEN']
             except KeyError:
                 access_token = None
-            return (api_url, base_url, useremail, access_token)
+            try:
+                s3_bucket = conf['HIPCHAT_S3_BUCKET'] 
+            except KeyError:
+                s3_bucket = None
+
+            for key in conf:
+                os.environ[key] = conf[key]
+
+            return (api_url, base_url, useremail, access_token, s3_bucket)
     except IOError:
         logger.error('Could not find %s' % CONF_FILE)
         sys.exit(1)
@@ -290,28 +303,34 @@ def is_s3():
                 break
     return False
 
+def set_s3_cache(bucket, data):
+    logger.info('Saving cache to S3: %s ...' % bucket)
+    try:
+        import boto3
+        s3 = boto3.resource('s3')
+        data = json.dumps(data)
+        s3.Object(bucket, CACHE_FILE).put(Body=data)
+    except ImportError:
+        logger.error('Please run: pip install boto3')
 
-def set_s3_cache(data):
-    import boto3
-    logger.info('Saving cache to S3 ...')
-    s3 = boto3.resource('s3')
-    data = json.dumps(data)
-    s3.Object('khilnani-sync', CACHE_FILE).put(Body=data)
+def get_s3_cache(bucket):
+    logger.info('Reading cache from S3: %s ...' % bucket)
+    try:
+        import boto3
+        s3 = boto3.resource('s3')
+        data = s3.Object(bucket, CACHE_FILE).get()['Body'].read()
+        return json.loads( data )
+    except ImportError:
+        logger.error('Please run: pip install boto3')
 
-def get_s3_cache():
-    logger.info('Reading cache from S3 ...')
-    import boto3
-    s3 = boto3.resource('s3')
-    data = s3.Object('khilnani-sync', CACHE_FILE).get()['Body'].read()
-    return json.loads( data )
-
-def get_cache():
+def get_cache(s3_bucket):
     c = None
     if is_s3():
         try:
-            c = get_s3_cache()
+            c = get_s3_cache(s3_bucket)
         except Exception as e:
-            print(str(e))
+            logger.error(str(e))
+            sys.exit(1)
     else:
         try:
             with open(CACHE_FILE, 'r') as c_file:
@@ -343,8 +362,8 @@ def get_cache():
     return (rooms, users, lastrun, lastrun_date)
 
 
-def update_cache(rooms=None, users=None, lastrun=None, set_lastrun_date=False):
-    rms, us, lr, lastrun_date = get_cache()
+def update_cache(s3_bucket, rooms=None, users=None, lastrun=None, set_lastrun_date=False):
+    rms, us, lr, lastrun_date = get_cache(s3_bucket)
     c = {}
 
     if rooms != None:
@@ -369,9 +388,10 @@ def update_cache(rooms=None, users=None, lastrun=None, set_lastrun_date=False):
 
     if is_s3():
         try:
-            set_s3_cache(c)
+            set_s3_cache(s3_bucket, c)
         except Exception as e:
-            print(str(e))
+            logger.error(str(e))
+            sys.exit(1)
     else:
         try:
             with open(CACHE_FILE, 'w') as c_file:
@@ -413,18 +433,18 @@ def check_access_token(api_url, access_token):
         return valid
     return False
 
-def get_new_access_token(api_url, base_url, useremail=None):
-    logger.info('Updating access token ...')
+def get_new_access_token(api_url, base_url, useremail, s3_bucket):
+    logger.info('Updating  ...')
     if not useremail:
         useremail = input('User email:')
     logger.info('Tip: Get a personal access token from: https://www.hipchat.com/account/api')
     access_token = getpass.getpass('Access token:')
     if access_token:
-        update_conf_info(access_token, useremail)
+        update_conf_info(access_token, useremail, s3_bucket)
     return access_token
 
-def check_time_left():
-    rooms, users, lastrun, lastrun_date = get_cache()
+def check_time_left(s3_bucket):
+    rooms, users, lastrun, lastrun_date = get_cache(s3_bucket)
     logger.debug('Last run %s', lastrun_date)
     if lastrun_date:
         lr = dp(lastrun_date)
@@ -470,16 +490,16 @@ def get_users(api_url, access_token):
         request_error(r)
     return users
 
-def refresh_cache(api_url, access_token, id_or_email):
+def refresh_cache(s3_bucket, api_url, access_token, id_or_email):
     logger.info('Reviewing cache ...')
-    rooms, users, lastrun, lastrun_date = get_cache()
+    rooms, users, lastrun, lastrun_date = get_cache(s3_bucket)
     if not rooms:
         rooms = get_auto_join_rooms(api_url, access_token, id_or_email)
-        update_cache(rooms=rooms)
+        update_cache(s3_bucket, rooms=rooms)
     logger.info('  Rooms: %s' % len(rooms))
     if not users:
         users= get_users(api_url, access_token)
-        update_cache(users=users)
+        update_cache(s3_bucket, users=users)
     logger.info('  Users: %s' % len(users))
     return (rooms, users)
 
@@ -604,15 +624,14 @@ def get_unread_summary(api_url, access_token, rooms, users):
 def display_unread_summary(items):
     for key in items:
         logger.info('  %s: %s new.' % (key, len(items[key])))
-    print('')
 
-def use_lastrun_cache():
+def use_lastrun_cache(s3_bucket):
     if len(sys.argv) > 1:
         for ea in sys.argv:
             if ea in ('CACHE'):
                 logger.info('Using cached data  ...')
                 sys.argv.remove(ea)
-                rooms, users, lastrun, lastrun_date = get_cache()
+                rooms, users, lastrun, lastrun_date = get_cache(s3_bucket)
                 return lastrun
                 break
     return None
@@ -664,27 +683,42 @@ def display_unread(items):
 
 
 def main():
-    api_url, base_url, useremail, access_token = get_conf_info()
+    api_url, base_url, useremail, access_token, s3_bucket = get_conf_info()
 
-    items = use_lastrun_cache()
+    items = use_lastrun_cache(s3_bucket)
     if not items:
-        timeleft = check_time_left()
+        timeleft = check_time_left(s3_bucket)
         if timeleft:
             logger.info('Please wait %s to honor api limits.' % timeleft)
             sys.exit(1)
 
         if not check_access_token(api_url, access_token):
-            get_new_access_token(api_url, base_url, useremail)
+            get_new_access_token(api_url, base_url, useremail, s3_bucket)
             logger.info('Configuratiom updated with access token. Start over please.')
             sys.exit(1)
 
         update_cache(set_lastrun_date=True)
-        rooms, users = refresh_cache(api_url, access_token, useremail)
+        rooms, users = refresh_cache(s3_bucket, api_url, access_token, useremail)
         items = get_unread_summary(api_url, access_token, rooms, users)
-        update_cache(lastrun=items)
+        update_cache(s3_bucket, lastrun=items)
 
     display_unread(items)
     logger.info('Done.')
+
+def aws_configure():
+    try:
+        import awscli.clidriver
+        sys.argv.append('configure')
+        return awscli.clidriver.main()
+    except ImportError:
+        logger.error('Please run: pip install awscli')
+
+def adjust_pythonista_args():
+    if 'iP' in machine and len(sys.argv) == 2 and ',' in sys.argv[1]:
+        args = sys.argv[1].split(',')
+        sys.argv.remove(sys.argv[1])
+        for ea in args:
+            sys.argv.append(ea)
 
 ############################################################
 
@@ -700,6 +734,7 @@ def lambda_handler(event, context):
 
 if __name__ == '__main__':
     try:
+        adjust_pythonista_args()
         setup_logging()
         main()
     except KeyboardInterrupt as e:
