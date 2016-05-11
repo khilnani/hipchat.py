@@ -55,7 +55,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
@@ -247,6 +247,7 @@ def is_s3():
     if len(sys.argv) > 1:
         for ea in sys.argv:
             if ea in ('S3'):
+                logger.info('Reading cache from S3')
                 return True
                 break
     return False
@@ -314,7 +315,7 @@ def get_conf_info():
 
 
 def set_s3_cache(bucket, data):
-    logger.info('Saving cache to S3: %s ...' % bucket)
+    logger.debug('Saving cache to S3: %s ...' % bucket)
     try:
         import boto3
         s3 = boto3.resource('s3')
@@ -325,7 +326,7 @@ def set_s3_cache(bucket, data):
         sys.exit(1)
 
 def get_s3_cache(bucket):
-    logger.info('Reading cache from S3: %s ...' % bucket)
+    logger.debug('Reading cache from S3: %s ...' % bucket)
     try:
         import boto3
         import botocore
@@ -641,7 +642,7 @@ def use_lastrun_cache(s3_bucket):
     if len(sys.argv) > 1:
         for ea in sys.argv:
             if ea in ('CACHE'):
-                logger.info('Using cached data  ...')
+                logger.info('Using cached data')
                 sys.argv.remove(ea)
                 rooms, users, lastrun, lastrun_date = get_cache(s3_bucket)
                 return lastrun
