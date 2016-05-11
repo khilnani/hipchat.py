@@ -240,17 +240,17 @@ def update_conf_info(token=None, email=None, s3_bucket=None):
     conf = {}
 
     if api_url:
-        conf['API_URL'] = api_url
+        conf['HIPCHAT_API_URL'] = api_url
     if base_url:
-        conf['BASE_URL'] = base_url
+        conf['HIPHAT_BASE_URL'] = base_url
     if email:
-        conf['USER_EMAIL'] = email
+        conf['HIPCHAT_USER_EMAIL'] = email
     elif useremail:
-        conf['USER_EMAIL'] = useremail
+        conf['HIPCHAT_USER_EMAIL'] = useremail
     if token:
-        conf['ACCESS_TOKEN'] = token
+        conf['HIPCHAT_ACCESS_TOKEN'] = token
     elif access_token:
-        conf['ACCESS_TOKEN'] = access_token
+        conf['HIPCHAT_ACCESS_TOKEN'] = access_token
     if s3_bucket:
         conf['HIPCHAT_S3_BUCKET'] = s3_bucket
     elif s3_b:
@@ -268,14 +268,14 @@ def get_conf_info():
     try:
         with open(CONF_FILE, 'r') as conf_file:
             conf = json.load(conf_file)
-            api_url = conf['API_URL']
-            base_url = conf['BASE_URL']
+            api_url = conf['HIPCHAT_API_URL']
+            base_url = conf['HIPCHAT_BASE_URL']
             try:
-                useremail = conf['USER_EMAIL']
+                useremail = conf['HIPCHAT_USER_EMAIL']
             except KeyError:
                 useremail = None
             try:
-                access_token = conf['ACCESS_TOKEN']
+                access_token = conf['HIPCHAT_ACCESS_TOKEN']
             except KeyError:
                 access_token = None
             try:
