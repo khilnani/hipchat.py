@@ -322,6 +322,7 @@ def set_s3_cache(bucket, data):
         s3.Object(bucket, CACHE_FILE).put(Body=data)
     except ImportError:
         logger.error('Please run: pip install boto3')
+        sys.exit(1)
 
 def get_s3_cache(bucket):
     logger.info('Reading cache from S3: %s ...' % bucket)
@@ -333,6 +334,7 @@ def get_s3_cache(bucket):
         return json.loads( data )
     except ImportError:
         logger.error('Please run: pip install boto3')
+        sys.exit(1)
     except botocore.exceptions.ClientError as e:
         pass
     return {}
