@@ -235,6 +235,22 @@ def request_error(req):
 
 ############################################################
 
+def is_lambda():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('LAMBDA'):
+                return True
+                break
+    return False
+
+def is_s3():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('S3'):
+                return True
+                break
+    return False
+
 def update_conf_info(token=None, email=None, s3_bucket=None):
     api_url, base_url, useremail, access_token, s3_b = get_conf_info()
     conf = {}
@@ -283,8 +299,10 @@ def get_conf_info():
             except KeyError:
                 s3_bucket = None
 
-            for key in conf:
-                os.environ[key] = conf[key]
+            # Do not set AWS config if running in lambda, conflicts with lambda role setup
+            if not is_lambda():
+                for key in conf:
+                    os.environ[key] = conf[key]
 
             return (api_url, base_url, useremail, access_token, s3_bucket)
     except IOError:
@@ -294,14 +312,6 @@ def get_conf_info():
         logger.error('Invalid JSON in %s' % CONF_FILE)
         sys.exit(1)
 
-
-def is_s3():
-    if len(sys.argv) > 1:
-        for ea in sys.argv:
-            if ea in ('S3'):
-                return True
-                break
-    return False
 
 def set_s3_cache(bucket, data):
     logger.info('Saving cache to S3: %s ...' % bucket)
@@ -724,6 +734,7 @@ def adjust_pythonista_args():
 
 def lambda_handler(event, context):
     sys.argv.append('NODETAILS')
+    sys.argv.append('LAMBDA')
     sys.argv.append('S3')
     setup_logging()
     logger.info('Platform: ' + machine)
