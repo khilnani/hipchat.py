@@ -55,7 +55,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.3.2'
+__version__ = '0.3.3'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
@@ -638,16 +638,13 @@ def display_unread_summary(items):
     for key in items:
         logger.info('  %s: %s new.' % (key, len(items[key])))
 
-def use_lastrun_cache(s3_bucket):
+def use_cache():
     if len(sys.argv) > 1:
         for ea in sys.argv:
             if ea in ('CACHE'):
                 logger.info('Using cached data')
-                sys.argv.remove(ea)
-                rooms, users, lastrun, lastrun_date = get_cache(s3_bucket)
-                return lastrun
-                break
-    return None
+                return True
+    return False
 
 def display_unread_ios(items):
     htv = HipchatTableView(data=items)
@@ -667,14 +664,10 @@ def is_show_details():
     if len(sys.argv) > 1:
         for ea in sys.argv:
             if ea in ('DETAILS'):
-                sys.argv.remove(ea)
                 return True
-                break
         for ea in sys.argv:
             if ea in ('NODETAILS'):
-                sys.argv.remove(ea)
                 return False
-                break
     return None
 
 def display_unread(items):
@@ -698,8 +691,9 @@ def display_unread(items):
 def main():
     api_url, base_url, useremail, access_token, s3_bucket = get_conf_info()
 
-    items = use_lastrun_cache(s3_bucket)
-    if not items:
+    if use_cache():
+      rooms, users, items, lastrun_date = get_cache(s3_bucket)
+    else:
         timeleft = check_time_left(s3_bucket)
         if timeleft:
             logger.info('Please wait %s to honor api limits.' % timeleft)
