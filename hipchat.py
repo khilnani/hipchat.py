@@ -55,7 +55,7 @@ API_WAIT_TIME = 300 # seconds
 
 logger = None
 
-__version__ = '0.3.3'
+__version__ = '0.3.4'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
@@ -324,6 +324,8 @@ def set_s3_cache(bucket, data):
     except ImportError:
         logger.error('Please run: pip install boto3')
         sys.exit(1)
+    except botocore.exceptions.EndpointConnectionError as e:
+        logger.warning(e)
 
 def get_s3_cache(bucket):
     logger.debug('Reading cache from S3: %s ...' % bucket)
@@ -335,6 +337,9 @@ def get_s3_cache(bucket):
         return json.loads( data )
     except ImportError:
         logger.error('Please run: pip install boto3')
+        sys.exit(1)
+    except botocore.exceptions.EndpointConnectionError as e:
+        logger.error(e)
         sys.exit(1)
     except botocore.exceptions.ClientError as e:
         pass
