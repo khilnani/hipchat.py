@@ -4,7 +4,7 @@ A python script to display unread hipchat rooms/conversations.
 
 On iOS, Hipchat notifications sometimes do not show, or it can be easy to miss one. This script allows you to perform a review of any unread notifications.
 
-While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) [iOS Store](https://itunes.apple.com/us/app/pythonista-3/id1085978097?mt=8) application, the script runs on any linux/mac os environment.
+While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) ([iOS Store](https://itunes.apple.com/us/app/pythonista-3/id1085978097?mt=8)) application, the script runs on any linux/mac os environment.
 
 When run within iOS Pythonista, a native ui allows exploring
 the unread messages. Linux/Mac OS display is limited to the terminal/console.
@@ -17,7 +17,7 @@ the unread messages. Linux/Mac OS display is limited to the terminal/console.
 
 ### iOS
 
-- Install [Pythonista](http://omz-software.com/pythonista/) [iOS Store](https://itunes.apple.com/us/app/pythonista-3/id1085978097?mt=8)
+- Install [Pythonista](http://omz-software.com/pythonista/) ([iOS Store](https://itunes.apple.com/us/app/pythonista-3/id1085978097?mt=8))
 - In the Pythonista Python console (Swipe left), run : `import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()`
 
 ### Configuration
