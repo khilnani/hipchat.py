@@ -49,13 +49,16 @@ from six.moves import input
 
 ############################################################
 
-CONF_FILE = 'hipchat.conf'
+CONF_NAME = 'hipchat.conf'
 CACHE_FILE = 'hipchat_cache.json'
 API_WAIT_TIME = 300 # seconds
 
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+CONF_FILE = os.path.join(SCRIPT_DIR, CONF_NAME)
+
 logger = None
 
-__version__ = '0.3.4'
+__version__ = '0.3.5'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
@@ -279,7 +282,8 @@ def update_conf_info(token=None, email=None, s3_bucket=None):
             json.dump(conf, conf_file)
     except IOError:
         logger.error('Could not write %s' % CONF_FILE)
-        sys.exit(1)
+        #sys.exit(1)
+        return None
 
 def get_conf_info():
     try:
@@ -308,10 +312,12 @@ def get_conf_info():
             return (api_url, base_url, useremail, access_token, s3_bucket)
     except IOError:
         logger.error('Could not find %s' % CONF_FILE)
-        sys.exit(1)
+        #sys.exit(1)
+        return None
     except ValueError:
         logger.error('Invalid JSON in %s' % CONF_FILE)
-        sys.exit(1)
+        #sys.exit(1)
+        return None
 
 
 def set_s3_cache(bucket, data):
@@ -323,7 +329,8 @@ def set_s3_cache(bucket, data):
         s3.Object(bucket, CACHE_FILE).put(Body=data)
     except ImportError:
         logger.error('Please run: pip install boto3')
-        sys.exit(1)
+        #sys.exit(1)
+        return None
     except botocore.exceptions.EndpointConnectionError as e:
         logger.warning(e)
 
@@ -337,10 +344,12 @@ def get_s3_cache(bucket):
         return json.loads( data )
     except ImportError:
         logger.error('Please run: pip install boto3')
-        sys.exit(1)
+        #sys.exit(1)
+        return None
     except botocore.exceptions.EndpointConnectionError as e:
         logger.error(e)
-        sys.exit(1)
+        #sys.exit(1)
+        return None
     except botocore.exceptions.ClientError as e:
         pass
     return {}
@@ -409,7 +418,8 @@ def update_cache(s3_bucket, rooms=None, users=None, lastrun=None, set_lastrun_da
             set_s3_cache(s3_bucket, c)
         except Exception as e:
             logger.error(str(e))
-            sys.exit(1)
+            #sys.exit(1)
+            return None
     else:
         try:
             with open(CACHE_FILE, 'w') as c_file:
@@ -438,10 +448,12 @@ def get(api_url, access_token, path):
     except ValueError as e:
         logger.error(e)
         request_error(r)
-        sys.exit(e)
+        #sys.exit(e)
+        return None
     except requests.exceptions.SSLError as e:
         logger.error(e)
-        sys.exit(e)
+        #sys.exit(e)
+        return None
 
 def check_access_token(api_url, access_token):
     logger.info('Checking access token ...')
@@ -702,12 +714,14 @@ def main():
         timeleft = check_time_left(s3_bucket)
         if timeleft:
             logger.info('Please wait %s to honor api limits.' % timeleft)
-            sys.exit(1)
+            #sys.exit(1)
+            return None
 
         if not check_access_token(api_url, access_token):
             get_new_access_token(api_url, base_url, useremail, s3_bucket)
             logger.info('Configuratiom updated with access token. Start over please.')
-            sys.exit(1)
+            #sys.exit(1)
+            return None
 
         update_cache(s3_bucket, set_lastrun_date=True)
         rooms, users = refresh_cache(s3_bucket, api_url, access_token, useremail)
