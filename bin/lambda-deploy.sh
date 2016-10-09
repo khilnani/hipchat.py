@@ -2,4 +2,5 @@
 
 aws lambda update-function-code \
     --function-name hipchat-unread \
-    --zip-file fileb://lambda.zip
+    --zip-file fileb://lambda.zip \
+    --profile lambda
