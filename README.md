@@ -4,31 +4,37 @@ A python script to display unread hipchat rooms/conversations.
 
 On iOS, Hipchat notifications sometimes do not show, or it can be easy to miss one. This script allows you to perform a review of any unread notifications.
 
-While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) application, the script runs on any linux/mac os environment.
+While designed for the iOS [Pythonista](http://omz-software.com/pythonista/) ([iOS Store](https://itunes.apple.com/us/app/pythonista-3/id1085978097?mt=8)) application, the script runs on any linux/mac os environment.
 
 When run within iOS Pythonista, a native ui allows exploring
 the unread messages. Linux/Mac OS display is limited to the terminal/console.
 
 ## Installation
 
-- Download or clone the github repo, or:
-  - Pythonista console: `import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()`
-  - Linux/Mac OS Terminal: `python -c "import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()"`
+### Desktop
 
-## Configuration
+- Download or clone the github repo, or at the Linux/Mac OS Terminal: `python -c "import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()"`
 
-- Rename `hipchat.sample.conf` to `hipchat.conf` and update values
+### iOS
 
-## Usage
+- Install [Pythonista](http://omz-software.com/pythonista/) ([iOS Store](https://itunes.apple.com/us/app/pythonista-3/id1085978097?mt=8))
+- In the Pythonista Python console (Swipe left), run : `import urllib2; exec urllib2.urlopen('http://khl.io/hipchat-py').read()`
 
-### Note
+### Configuration
+
+- Rename `hipchat.sample.conf` to `hipchat.conf` and update values.
+- Updated with a valid Personal Access token for Hipchat (see below)
+
+#### Hipchat Personal Access Token
 
 - When you run the script for the first time, it will request a Personal Access token to access Hipchat on your behalf
 - *This scripts only requires read access.*
 - Hipchat allows you set configure access permissions eg. read, write, admin.
 - Get a personal access token from: https://www.hipchat.com/account/api
 
-### Execution
+## Usage
+
+### iOS  / Pythonista
 
 - Simply run this script in Pythonista, or in a Linux/Mac OS Terminal
 - Example. `python hipchat.py [ CACHE | DETAILS | NODETAILS | S3 ]`

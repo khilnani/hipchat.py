@@ -12,6 +12,9 @@ INSTALL_DIR = os.getcwd()
 
 REPO_NAME = 'hipchat.py'
 SCRIPT_NAME = 'hipchat.py'
+CONF_SAMPLE_NAME = 'hipchat.sample.conf'
+CONF_NAME = 'hipchat.conf'
+
 GITHUB_MASTER = 'https://raw.githubusercontent.com/khilnani/%s/master/' % REPO_NAME
 
 
@@ -65,6 +68,7 @@ def download_file(src, dest):
 
 def download():
     download_file(GITHUB_MASTER+SCRIPT_NAME, os.path.join(INSTALL_DIR, SCRIPT_NAME))
+    download_file(GITHUB_MASTER+CONF_SAMPLE_NAME, os.path.join(INSTALL_DIR, CONF_NAME))
     logging.info('Done.')
 
 ############################################
