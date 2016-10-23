@@ -58,7 +58,7 @@ CONF_FILE = os.path.join(SCRIPT_DIR, CONF_NAME)
 
 logger = None
 
-__version__ = '0.3.5'
+__version__ = '0.3.6'
 print(('Version: ' + __version__))
 
 machine = platform.machine()
@@ -237,6 +237,24 @@ def request_error(req):
 #    logger.error(req.headers)
 
 ############################################################
+
+def use_cache():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('CACHE'):
+                logger.info('Using cached data')
+                return True
+    return False
+
+def is_show_details():
+    if len(sys.argv) > 1:
+        for ea in sys.argv:
+            if ea in ('DETAILS'):
+                return True
+        for ea in sys.argv:
+            if ea in ('NODETAILS'):
+                return False
+    return None
 
 def is_lambda():
     if len(sys.argv) > 1:
@@ -655,14 +673,6 @@ def display_unread_summary(items):
     for key in items:
         logger.info('  %s: %s new.' % (key, len(items[key])))
 
-def use_cache():
-    if len(sys.argv) > 1:
-        for ea in sys.argv:
-            if ea in ('CACHE'):
-                logger.info('Using cached data')
-                return True
-    return False
-
 def display_unread_ios(items):
     htv = HipchatTableView(data=items)
 
@@ -676,16 +686,6 @@ def display_unread_desktop(items):
             print(msg)
             print('')
         print('')
-
-def is_show_details():
-    if len(sys.argv) > 1:
-        for ea in sys.argv:
-            if ea in ('DETAILS'):
-                return True
-        for ea in sys.argv:
-            if ea in ('NODETAILS'):
-                return False
-    return None
 
 def display_unread(items):
     display_unread_summary(items)
@@ -762,6 +762,8 @@ def lambda_handler(event, context):
 if __name__ == '__main__':
     try:
         adjust_pythonista_args()
+        sys.argv.append('CACHE')
+        sys.argv.append('S3')
         setup_logging()
         main()
     except KeyboardInterrupt as e:
