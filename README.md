@@ -106,6 +106,9 @@ recent status (within 15 min, based on the event config below)
         - Memory: `128` mb
         - Timeout: `3` min `0` sec
         - VPC: `No VPC`
+	- CloudWatch / Logs
+    - Log Groups: /aws/lambda/hipchat-unread
+        - Expire Events After: 1day
 - Once setup,
     - Setup a virtual environment using the `requirements.txt` package list
     - Run `bin/lambda-package.sh`
